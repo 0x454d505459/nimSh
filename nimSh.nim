@@ -4,23 +4,23 @@ import osproc, strutils, os, streams
 from posix import execvp, fork, wait
 
 const
-    red     = static rgb(255,35,64)
-    green   = static rgb(76,255,157)
-    blue    = static rgb(90,153,255)
-    violet  = static rgb(255,117,255)
-    yellow  = static rgb(253,255,105)
-    blank   = static def()
+    red = static rgb(255, 35, 64)
+    green = static rgb(76, 255, 157)
+    blue = static rgb(90, 153, 255)
+    violet = static rgb(255, 117, 255)
+    yellow = static rgb(253, 255, 105)
+    blank = static def()
 
-var 
-    history:seq[string]
-    historyReversed:seq[string]
-    fgProcess:Process
-    hostname:string
+var
+    history: seq[string]
+    historyReversed: seq[string]
+    fgProcess: Process
+    hostname: string
 
 proc endProcess() {.noconv.} =
     fgProcess.terminate()
 
-proc getHostName():string =
+proc getHostName(): string =
     return readFile("/etc/hostname").strip()
 
 proc clearPrompt() =
@@ -28,12 +28,12 @@ proc clearPrompt() =
     stdout.write " "
     moveCursorLeft 1
 
-proc shellError(cmd,msg:string) =
+proc shellError(cmd, msg: string) =
     echo "\n" & getAppFilename().splitPath()[1] & ": " & cmd & " : " & msg
 
-proc runCommand(args:seq[string]) =
-    let argsArr = allocCStringArray(args[0..^1].toOpenArray(0,args.high))
-    echo ""    
+proc runCommand(args: seq[string]) =
+    let argsArr = allocCStringArray(args[0..^1].toOpenArray(0, args.high))
+    echo ""
     let forked = fork()
     if forked < 0:
         echo "Error while forking"
@@ -44,13 +44,14 @@ proc runCommand(args:seq[string]) =
         wait(nil)
     else:
         discard execvp(cstring(args[0]), argsArr)
-    
-    
+
+
 proc prompt() =
     let pwd = os.getCurrentDir().split("/")[^1]
-    stdout.write(green & hostname & red & ":[" & blue & os.getEnv("USER") & red & "]" & violet & pwd & yellow & "$ " & blank)
+    stdout.write(green & hostname & red & ":[" & blue & os.getEnv("USER") &
+            red & "]" & violet & pwd & yellow & "$ " & blank)
 
-template moveHistory(history,reversed:untyped) =
+template moveHistory(history, reversed: untyped) =
     if len(history) == 0: continue
     let currentCmd = history.pop()
     reversed.add(currentCmd)
@@ -58,10 +59,10 @@ template moveHistory(history,reversed:untyped) =
         for i in 0..len(keys)-1:
             clearPrompt()
         keys = @[]
-    
+
     for ck in currentCmd:
         keys.add Key(ck)
-    
+
     stdout.write currentCmd
 
 
@@ -70,20 +71,20 @@ hostname = getHostName()
 while true:
     prompt()
 
-    var 
-        keys:seq[Key]
-        keyIndex:int
+    var
+        keys: seq[Key]
+        keyIndex: int
 
     keyIndex = len(keys)
     while true:
-        let 
+        let
             c = tlib.getKey()
-        
+
         case c
         of CtrlC, CtrlD:
             stdout.write "\nexit\n"
             quit(0)
-        
+
         of CtrlA:
             echo keys
 
@@ -91,7 +92,7 @@ while true:
             if keyIndex >= keys.len(): continue
             keyIndex += 1
             moveCursorLeft 1
-        
+
         of Right:
             if keyIndex <= 0: continue
             keyIndex -= 1
@@ -99,7 +100,7 @@ while true:
 
         of Enter:
             break
-            
+
         of Up:
             moveHistory(history, historyReversed)
 
@@ -116,16 +117,16 @@ while true:
                 clearPrompt()
         else:
             let insertPos = len(keys) - keyIndex
-            keys.insert(c,insertPos)
-            stdout.write(keys[insertPos..^1].join(""))            
+            keys.insert(c, insertPos)
+            stdout.write(keys[insertPos..^1].join(""))
             keyIndex = 0
-    
-    var str:string
+
+    var str: string
     for k in keys:
         str.add $k
     keys = @[]
 
-    if str == "" or str == " ": echo "";continue
+    if str == "" or str == " ": echo ""; continue
 
     let args = str.split(" ")
     history.add str
@@ -134,15 +135,16 @@ while true:
         of "history":
             echo history
             continue
-            
+
         of "cd":
             if len(args) == 1: shellError(args[0], "Nowhere to go"); continue
-            if not os.dirExists(args[1]): shellError(args[0], "No such file or directory");continue
+            if not os.dirExists(args[1]): shellError(args[0],
+                    "No such file or directory"); continue
             os.setCurrentDir(args[1])
             echo ""
             continue
 
-    
-    if findExe(args[0], true, [""]) == "": shellError(args[0], "Command not found");continue
+
+    if findExe(args[0], true, [""]) == "": shellError(args[0],
+            "Command not found"); continue
     runCommand(args)
-    
